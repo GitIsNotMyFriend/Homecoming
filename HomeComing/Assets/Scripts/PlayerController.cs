@@ -4,19 +4,29 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float speed = 5f;
-    public float jumpingForce = 7f;
-    public bool isGrounded = false;
-    private GameObject currentGround = null;
-    private float groundAngleThreshold = 0.5f;
+    public enum Direction { RIGHT, LEFT };
 
+    public float _speed = 5f;
+    public float _jumpingForce = 7f;
+
+    private Direction _direction;
+
+    private bool _isGrounded = false;
+    public bool IsGrounded { get { return this._isGrounded; } }
+    private float _groundSlopeThreshold = 0.5f;
+    private GameObject currentGround = null;
+
+    private AudioManager audioManager;
     private Rigidbody2D rb;
     private Animation anim;
     private SpriteRenderer graphicsSprite;
+
+    private GameObject hatClone;
     public GameObject hat;
 
     private void Start()
     {
+        audioManager = GetComponent<AudioManager>();
         rb = GetComponent<Rigidbody2D>();
         anim = this.GetComponentInChildren<Animation>();
         graphicsSprite = this.GetComponentInChildren<SpriteRenderer>();
@@ -25,46 +35,57 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         float horizontal = Input.GetAxis("Horizontal");
+        _direction = horizontal > 0 ? Direction.RIGHT : (horizontal < 0 ? Direction.LEFT : _direction);
         bool jump = Input.GetKeyDown(KeyCode.UpArrow);
         bool attack = Input.GetKeyDown(KeyCode.Z);
 
-        rb.velocity = new Vector2(horizontal * speed, 
-            jump ? jumpingForce : rb.velocity.y);
+        float xVel = horizontal * _speed;
+        float yVel = rb.velocity.y;
 
+        graphicsSprite.flipX = _direction == Direction.RIGHT ? false : true;
 
-        if (horizontal > 0)
-            graphicsSprite.flipX = false;
-        if (horizontal < 0)
-            graphicsSprite.flipX = true;
-
-        if (isGrounded)
+        if (_isGrounded)
         {
-            //if (jump)
-            //    anim.Play("HomieJump");
-            //if (rb.velocity.y < 0)
-            //    anim.Play("HomieGroundFall");
+            yVel = jump ? _jumpingForce : rb.velocity.y;
+
             if (horizontal != 0)
+            {
                 anim.Play("HomieWalkRight");
+                audioManager.Play("walking");
+            }
         }
-        if (attack)
-            Attack(horizontal);
+        if (attack && !hatClone)
+            Attack();
+
+        if (hatClone && hatClone.GetComponent<HatMovement>().finishedAnimation)
+        {
+            Destroy(hatClone.gameObject);
+
+            hat.GetComponent<SpriteRenderer>().enabled = true;
+        }
+
+        rb.velocity = new Vector2(xVel, yVel);
     }
 
-    private void Attack(float direction)
+    private void Attack()
     {
-        anim.Play();
-        hat.transform.SetParent(null);
-        hat.GetComponent<HatMovement>().Fly((int)direction);
+        hatClone = Instantiate(hat.gameObject);
+        hatClone.transform.position = hat.transform.position;
+        hat.GetComponent<SpriteRenderer>().enabled = false;
+
+        hatClone.transform.SetParent(null);
+        hatClone.GetComponent<HatMovement>().Fly(_direction);
+        audioManager.Play("hatThrow");
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
         foreach (ContactPoint2D contact in collision.contacts)
         {
-            if (contact.normal.y > groundAngleThreshold)
+            if (contact.normal.y > _groundSlopeThreshold)
             {
                 currentGround = collision.gameObject;
-                isGrounded = true;
+                _isGrounded = true;
                 break;
             }
         }
@@ -75,7 +96,7 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject == currentGround)
         {
             currentGround = null;
-            isGrounded = false;
+            _isGrounded = false;
         }
     }
 }
