@@ -28,4 +28,11 @@ public class AudioManager : MonoBehaviour
         audioSource.clip = audioClips[clipName];
         audioSource.Play();
     }
+
+    public bool isPlaying()
+    {
+        if (!audioSource) return false;
+
+        return audioSource.isPlaying;
+    }
 }

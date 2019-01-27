@@ -51,7 +51,9 @@ public class PlayerController : MonoBehaviour
             if (horizontal != 0)
             {
                 anim.Play("HomieWalkRight");
-                audioManager.Play("walking");
+
+                if(!audioManager.isPlaying())
+                    audioManager.Play("walking");
             }
         }
         if (attack && !hatClone)
